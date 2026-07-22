@@ -1,53 +1,47 @@
 """
 Custom LangSmith evaluators for the Financial Approval System.
-
-Students implement evaluator factory functions that return callables
-compatible with LangSmith's evaluation framework.
-
-Part 4: LangSmith Tracing + Evaluation (20 points)
 """
+
+RISK_LEVELS = ["low", "medium", "high", "critical"]
+
+
+def _score_result(score: float, reasoning: str) -> dict:
+    return {"score": float(score), "reasoning": reasoning}
 
 
 def create_risk_accuracy_evaluator():
-    """
-    Create an evaluator that checks risk assessment accuracy.
+    """Create an evaluator that scores exact, adjacent, and non-adjacent risk predictions."""
+    def evaluator(inputs=None, outputs=None, reference_outputs=None, **kwargs):
+        outputs = outputs or {}
+        reference_outputs = reference_outputs or kwargs.get("reference_outputs") or {}
 
-    TODO (10 points):
-    - Return a callable (function) that takes two arguments:
-        - inputs: dict with "amount", "department", "description"
-        - outputs: dict with "risk_level"
-    - The callable should also accept a keyword argument:
-        - reference_outputs: dict with expected "risk_level"
-    - The evaluator logic:
-        - Compare outputs["risk_level"] with reference_outputs["risk_level"]
-        - Return {"score": 1.0} if they match exactly
-        - Return {"score": 0.5} if they are adjacent levels
-          (e.g., "low"/"medium", "medium"/"high", "high"/"critical")
-        - Return {"score": 0.0} otherwise
-    - Adjacent levels: define an ordered list ["low", "medium", "high", "critical"]
-      and check if the absolute index difference is 1
+        predicted = str(outputs.get("risk_level", "")).lower()
+        expected = str(reference_outputs.get("risk_level", "")).lower()
 
-    Returns:
-        A callable evaluator function
-    """
-    raise NotImplementedError("TODO: Implement create_risk_accuracy_evaluator (10 points)")
+        if predicted == expected and predicted in RISK_LEVELS:
+            return _score_result(1.0, "Risk level matches exactly")
+
+        if predicted in RISK_LEVELS and expected in RISK_LEVELS:
+            if abs(RISK_LEVELS.index(predicted) - RISK_LEVELS.index(expected)) == 1:
+                return _score_result(0.5, "Risk level is adjacent to expected")
+
+        return _score_result(0.0, f"Risk mismatch: predicted={predicted}, expected={expected}")
+
+    return evaluator
 
 
 def create_approval_consistency_evaluator():
-    """
-    Create an evaluator that checks approval decision consistency.
+    """Create an evaluator that checks final approval status consistency."""
+    def evaluator(inputs=None, outputs=None, reference_outputs=None, **kwargs):
+        outputs = outputs or {}
+        reference_outputs = reference_outputs or kwargs.get("reference_outputs") or {}
 
-    TODO (10 points):
-    - Return a callable that takes:
-        - inputs: dict with "amount", "department"
-        - outputs: dict with "status" (approved/rejected)
-    - The callable should also accept a keyword argument:
-        - reference_outputs: dict with expected "status"
-    - The evaluator logic:
-        - Return {"score": 1.0} if outputs["status"] matches reference_outputs["status"]
-        - Return {"score": 0.0} otherwise
+        predicted = str(outputs.get("status", "")).lower()
+        expected = str(reference_outputs.get("status", "")).lower()
 
-    Returns:
-        A callable evaluator function
-    """
-    raise NotImplementedError("TODO: Implement create_approval_consistency_evaluator (10 points)")
+        if predicted == expected and predicted:
+            return _score_result(1.0, "Approval status matches expected")
+
+        return _score_result(0.0, f"Approval status mismatch: predicted={predicted}, expected={expected}")
+
+    return evaluator
